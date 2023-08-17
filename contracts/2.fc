@@ -9,11 +9,53 @@
   After calculating the result matrix, the function should return final result (as tuple).
 -}
 
+int tlen(tuple t) asm "TLEN";
+forall X -> tuple tuple_set_index(tuple t, X value, int index) asm "SETINDEXVAR";
+
 () recv_internal() {
 }
 
 ;; testable
 (tuple) matrix_multiplier(tuple matrixA, tuple matrixB) method_id {
-  return null();
-}
+  int n = tlen(matrixA);           ;; number of rows in matrixA (R1)
+  int m = tlen(matrixB);          ;; number of columns in matrixA and rows in matrixB (C1 == R2)
+  int p = tlen(matrixB.first());  ;; number of columns in matrixB (C2)
 
+  tuple res_matrix = empty_tuple();
+
+  ;; make empty row -- vector of size p
+  tuple empty_row = empty_tuple();
+  int i = 0;
+  while (i < p) {
+    empty_row~tpush(0);
+    i += 1;
+  }
+  ;; fill resulting matrix n*p with zeroes
+  int i = 0;
+  while (i < n) {
+    res_matrix~tpush(empty_row);
+    i += 1;
+  }
+
+  ;; O(n^3) calc
+  int i = 0;
+  int j = 0;
+  while (i < n) {
+    j = 0;
+    while (j < p) {
+      int k = 0;
+      while (k < m) {
+        tuple row = res_matrix.at(i);
+        int val = row.at(j) + matrixA.at(i).at(k) * matrixB.at(k).at(j);
+
+        row = row.tuple_set_index(val, j);
+        res_matrix = res_matrix.tuple_set_index(row, i);
+        k += 1;
+      }
+      j += 1;
+    }
+    i += 1;
+  }
+
+  return res_matrix;
+}
