@@ -16,7 +16,7 @@ global int offset;
 (slice, int) getchar(slice str) inline_ref {
   if (str.slice_data_empty?()) {
     if (str.slice_refs_empty?()) {
-      return (str, -1);	;; end of comment
+      return (str, 0);	;; end of comment
     }
 
     str = str~load_ref().begin_parse();
@@ -39,7 +39,7 @@ global int offset;
   }
 
   int c = str~getchar();
-  while (c > 0) {
+  while (c) {
     ;; rotate
     if ((c >= 0x41) & (c <= 0x5A)) {
       c = (c - 0x41 + shift) % 26 + 0x41;
