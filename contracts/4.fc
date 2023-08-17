@@ -5,17 +5,109 @@
   where the text is encrypted in a cell (after 32bit 00000000 prefix flag), the algorithm rotates the characters and the last ASCII
   character should go to the beginning. Return new text encoded in cell.
 -}
+forall X -> int is_null (X x) asm "ISNULL";
 
 () recv_internal() {
 }
 
+global int offset;
+
+;; str is current slice
+(slice, int) getchar(slice str) inline_ref {
+  if (str.slice_data_empty?()) {
+    if (str.slice_refs_empty?()) {
+      return (str, -1);	;; end of comment
+    }
+
+    str = str~load_ref().begin_parse();
+    offset = 127;
+  }
+
+  int c = str~load_uint(8);
+  return (str, c);
+}
+
+(tuple) caesar(int shift, slice str) inline_ref {
+  var cells = null();
+
+  var current_slice = begin_cell().store_uint(0, 32);
+  offset = 4;
+
+  shift = shift % 26;
+  if (shift < 0) {
+    shift = 26 - shift;
+  }
+
+  int c = str~getchar();
+  while (c > 0) {
+    ;; rotate
+    if ((c >= 0x41) & (c <= 0x5A)) {
+      c = (c - 0x41 + shift) % 26 + 0x41;
+    }
+    if ((c >= 0x61) & (c <= 0x7A)) {
+      c = (c - 0x61 + shift) % 26 + 0x61;
+    }
+
+    ;; check if we need to store new ref
+    if (offset == 127) {
+      cells = cons(current_slice.end_cell(), cells); ;; push cell to head
+      current_slice = begin_cell();
+      offset = 0;
+    }
+
+    current_slice~store_uint(c, 8);
+    offset += 1;
+
+    c = str~getchar();
+  }
+
+  cells = cons(current_slice.end_cell(), cells);
+
+  return cells;
+}
+
 ;; testable
 (cell) caesar_cipher_encrypt(int shift, cell text) method_id {
-  return begin_cell().end_cell();
+  slice str = text.begin_parse();
+  str~load_uint(32);
+  tuple cells = caesar(shift, str);
+
+  var res = begin_cell();
+
+  (cell next_str, cells) = uncons(cells);
+  slice s = next_str.begin_parse();
+  res = res.store_slice(next_str.begin_parse());
+  while (~ is_null(cells)) {
+    cell new_ref = res.end_cell();
+
+    res = begin_cell();
+    (cell next_str, cells) = uncons(cells);
+    res = res.store_slice(next_str.begin_parse());
+    res = res.store_ref(new_ref);
+  }
+
+  return res.end_cell();
 }
 
 ;; testable
 (cell) caesar_cipher_decrypt(int shift, cell text) method_id {
-  return begin_cell().end_cell();
-}
+  shift = - shift;
 
+  slice str = text.begin_parse();
+  str~load_uint(32);
+  tuple cells = caesar(shift, str);
+
+  var res = begin_cell();
+
+  (cell next_str, cells) = uncons(cells);
+  res = res.store_slice(next_str.begin_parse());
+  while (~ is_null(cells)) {
+    cell new_ref = res.end_cell();
+
+    (cell next_str, cells) = uncons(cells);
+    res = res.store_slice(next_str.begin_parse());
+    res = res.store_ref(new_ref);
+  }
+
+  return res.end_cell();
+}
