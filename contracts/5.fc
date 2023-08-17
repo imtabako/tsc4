@@ -18,6 +18,50 @@
 
 ;; testable
 (tuple) fibonacci_sequence (int n, int k) method_id {
-  return null();
-}
+  tuple seq = empty_tuple();
+  if (k == 0) {
+    return seq;
+  }
 
+  int prev1 = 1;
+  int prev2 = 0;
+  int val = 0;
+
+  int i = 1;
+
+  ;; check for special cases (n <= 1)
+  if (n == 0) {
+    seq~tpush(0);
+    val = 1;
+    i = 1;
+    k -= 1;
+  }
+
+  if (n == 1) {
+    val = 1;
+    i = 2;
+  }
+
+  ;; calculate first number
+  while (i < n) {
+    val = prev1 + prev2;
+    prev2 = prev1;
+    prev1 = val;
+
+    i += 1;
+  }
+  seq~tpush(val);
+
+  ;; calculate rest of the sequence up to N+K
+  int i = 1;
+  while (i < k) {
+    val = prev1 + prev2;
+    prev2 = prev1;
+    prev1 = val;
+
+    seq~tpush(val);
+    i += 1;
+  }
+
+  return seq;
+}
