@@ -18,16 +18,18 @@ global int offset;
     if (str.slice_refs_empty?()) {
       return (str, 0);	;; end of comment
     }
+    ;;         ~dump(str);
 
-    str = str~load_ref().begin_parse();
-    offset = 127;
+    cell refered = str~load_ref();
+    str = refered.begin_parse();
+    offset = 128;
   }
 
   int c = str~load_uint(8);
   return (str, c);
 }
 
-(tuple) caesar(int shift, slice str) inline_ref {
+(tuple) caesar(int shift, slice str) impure {
   var cells = null();
 
   var current_slice = begin_cell().store_uint(0, 32);
@@ -49,7 +51,7 @@ global int offset;
     }
 
     ;; check if we need to store new ref
-    if (offset == 127) {
+    if (offset == 128) {
       cells = cons(current_slice.end_cell(), cells); ;; push cell to head
       current_slice = begin_cell();
       offset = 0;
@@ -73,18 +75,20 @@ global int offset;
   tuple cells = caesar(shift, str);
 
   var res = begin_cell();
+  cell new_ref = null();
 
   (cell next_str, cells) = uncons(cells);
   slice s = next_str.begin_parse();
-  res = res.store_slice(next_str.begin_parse());
+  res = res.store_slice(s);
   while (~ is_null(cells)) {
     cell new_ref = res.end_cell();
 
     res = begin_cell();
     (cell next_str, cells) = uncons(cells);
-    res = res.store_slice(next_str.begin_parse());
-    res = res.store_ref(new_ref);
+    slice s = next_str.begin_parse();
+    res = begin_cell().store_slice(s).store_ref(new_ref);
   }
+  ;;     var result = begin_cell().store_builder(res).end_cell();
 
   return res.end_cell();
 }
@@ -100,14 +104,18 @@ global int offset;
   var res = begin_cell();
 
   (cell next_str, cells) = uncons(cells);
-  res = res.store_slice(next_str.begin_parse());
+  slice s = next_str.begin_parse();
+  res = res.store_slice(s);
   while (~ is_null(cells)) {
     cell new_ref = res.end_cell();
 
+    res = begin_cell();
     (cell next_str, cells) = uncons(cells);
-    res = res.store_slice(next_str.begin_parse());
+    slice s = next_str.begin_parse();
+    res = res.store_slice(s);
     res = res.store_ref(new_ref);
   }
+
 
   return res.end_cell();
 }

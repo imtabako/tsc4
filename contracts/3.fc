@@ -19,8 +19,76 @@
 () recv_internal() {
 }
 
+(int) _bit(int flag, int index) inline_ref {
+  return flag & (1 << index) >> index;
+}
+
+;; return (0, count) if found flag (-1|-2, count) if reached eof without flag
+(int, int) get_next_flag(int flag, int value, int flag_len, int value_len, slice s_current) impure {
+  int index = 0;    ;; flag bit index
+  int count = 0;    ;; bits read from current slice
+
+  int s_len = s_current.slice_bits();
+  slice s = s_current.preload_bits(s_len);
+
+  while (~ s.slice_data_empty?()) {
+    int c = s~load_uint(1);
+    index += 1;
+    while ((c & flag._bit(index - 1)) & (index < flag_len) & (~ s.slice_data_empty?())) {   ;; we can skip check for flag_len
+      c = s~load_uint(1);
+      index += 1;
+    }
+
+    if (index == flag_len) {          ;; found flag
+;;       b~load_uint(value, value_len);
+      index = 0;
+      return (1, count);
+    }
+
+    if (c & flag._bit(index - 1)) {       ;; flag is still in search, no more bits in slice
+      s = s.load_ref().begin_parse();
+    } else {
+      if (s.slice_data_empty?()) {    ;; flag not found, no more bits in slice
+        return (-1, count);
+      }
+                                      ;; flag simply not found
+      count += index;
+    }
+  }
+  return (-2, count);
+}
+
 ;; testable
 (cell) find_and_replace(int flag, int value, cell linked_list) method_id {
+  int flag_len = 0;
+  int value_len = 0;
+  int index = 0;    ;; flag bit index
+  int count = 0;      ;; bits read from current slice
+
+  ;; calculate length of `flag' (number of bits)
+  int c = flag;
+  while (c > 0) {
+    c /= 2;
+    flag_len += 1;
+  }
+  ;; calculate length of `value' (number of bits)
+  int c = value;
+  while (c > 0) {
+    c /= 2;
+    value_len += 1;
+  }
+
+  tuple slices = empty_tuple();
+  slice s_current = linked_list.begin_parse();
+  int s_len = s_current.slice_bits();
+  slice s = s_current.preload_bits(s_len);
+
+  var b = b.begin_cell();
+
+  while (~ s.slice_empty?()) {
+    (int found?, int pos) = get_next_flag(flag, value, flag_len, value_len, s);
+  }
+
   return begin_cell().end_cell();
 }
 
